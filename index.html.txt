@@ -112,30 +112,25 @@
         onAuthStateChanged(window.auth, async (user) => {
             if (user) {
                 window.userId = user.uid;
-                console.log("Usuário autenticado:", window.userId);
+                console.log("Firebase Auth: Usuário autenticado:", window.userId);
             } else {
-                // Tenta autenticar anonimamente se não houver token inicial
-                if (!initialAuthToken) {
-                    try {
-                        const anonUser = await signInAnonymously(window.auth);
-                        window.userId = anonUser.user.uid;
-                        console.log("Autenticado anonimamente:", window.userId);
-                    } catch (error) {
-                        console.error("Erro ao autenticar anonimamente:", error);
-                    }
-                } else {
-                    // Se houver token inicial, tenta usá-lo
-                    try {
+                console.log("Firebase Auth: Nenhum usuário. Tentando autenticação...");
+                try {
+                    if (initialAuthToken) {
                         const customUser = await signInWithCustomToken(window.auth, initialAuthToken);
                         window.userId = customUser.user.uid;
-                        console.log("Autenticado com token personalizado:", window.userId);
-                    } catch (error) {
-                        console.error("Erro ao autenticar com token personalizado:", error);
+                        console.log("Firebase Auth: Autenticado com token personalizado:", window.userId);
+                    } else {
+                        const anonUser = await signInAnonymously(window.auth);
+                        window.userId = anonUser.user.uid;
+                        console.log("Firebase Auth: Autenticado anonimamente:", window.userId);
                     }
+                } catch (error) {
+                    console.error("Firebase Auth: Erro na autenticação:", error);
+                    window.userId = null; // Garante que userId é null em caso de falha
                 }
             }
             window.isAuthReady = true;
-            // Dispara um evento personalizado para indicar que a autenticação está pronta
             document.dispatchEvent(new CustomEvent('firebaseAuthReady'));
         });
     </script>
@@ -406,7 +401,7 @@
         }
 
         /**
-         * Loads all raffle data from Firestore and updates the UI.
+         * Carrega todos os dados da rifa do Firestore e atualiza a UI.
          */
         async function loadDataFromFirestore() {
             toggleLoading(true);
@@ -437,7 +432,7 @@
                         console.log("Dados da rifa carregados do Firestore:", data);
                         showMessage("Dados da rifa carregados com sucesso!", "success");
 
-                        // Update UI with loaded data
+                        // Atualiza a UI com os dados carregados
                         displayConfirmedTickets(generatedTickets);
                         if (currentWinner) {
                             winnerDisplay.textContent = `${currentWinner.number} (${currentWinner.buyer || 'Sem nome'})`;
@@ -449,36 +444,36 @@
                         displayPixKey.textContent = pixKey || 'Nenhuma chave Pix salva ainda.';
                         maxTicketNumberInput.value = maxTicketNumberSaved;
 
-                        // Render selectable tickets and mark selected ones
-                        renderSelectableTickets(maxTicketNumberSaved); // Use the loaded max ticket number
+                        // Renderiza os bilhetes selecionáveis e marca os selecionados
+                        renderSelectableTickets(maxTicketNumberSaved); // Usa o número máximo de bilhetes carregado
 
                         generatedTickets.forEach(ticket => {
                             const ticketEl = selectableTicketsContainer.querySelector(`[data-ticket="${ticket.number}"]`);
                             if (ticketEl) {
                                 ticketEl.classList.add('selected');
-                                // Disable click for all selectable tickets if they are part of the confirmed list
+                                // Desabilita o clique para todos os bilhetes selecionáveis se eles fazem parte da lista confirmada
                                 ticketEl.style.pointerEvents = 'none';
                             }
                         });
 
-                        // Adjust button states and sections based on loaded data and view mode
+                        // Ajusta o estado dos botões e secções com base nos dados carregados e no modo de visualização
                         if (isViewingShared) {
-                            // In shared view, disable all modification inputs/buttons
+                            // No modo de visualização partilhada, desabilita todos os inputs/botões de modificação
                             maxTicketNumberInput.disabled = true;
                             renderSelectableTicketsBtn.disabled = true;
                             confirmSelectionBtn.disabled = true;
-                            pickWinnerBtn.disabled = true; // Winner can only be drawn by owner in private view
+                            pickWinnerBtn.disabled = true; // O vencedor só pode ser sorteado pelo proprietário na visualização privada
                             saveNamesBtn.disabled = true;
                             pixKeyInput.disabled = true;
                             savePixKeyBtn.disabled = true;
-                            generateShareLinkBtn.disabled = true; // Cannot generate new share links from a shared view
-                            resetBtn.textContent = 'Voltar para Minha Rifa'; // Change reset button text
-                            nameAssignmentSection.classList.remove('hidden'); // Show names, but inputs are disabled
-                            renderNameAssignmentInputs(); // Render inputs, but they will be disabled
-                            nameAssignmentInputsContainer.querySelectorAll('input').forEach(input => input.disabled = true); // Explicitly disable inputs
+                            generateShareLinkBtn.disabled = true; // Não é possível gerar novos links de partilha a partir de uma visualização partilhada
+                            resetBtn.textContent = 'Voltar para Minha Rifa'; // Altera o texto do botão de reiniciar
+                            nameAssignmentSection.classList.remove('hidden'); // Mostra os nomes, mas os inputs estão desabilitados
+                            renderNameAssignmentInputs(); // Renderiza os inputs, mas eles estarão desabilitados
+                            nameAssignmentInputsContainer.querySelectorAll('input').forEach(input => input.disabled = true); // Desabilita explicitamente os inputs
                             showMessage("Você está visualizando uma rifa compartilhada (somente leitura).", "info");
                         } else {
-                            // Private view logic (existing)
+                            // Lógica de visualização privada (existente)
                             if (generatedTickets.length > 0) {
                                 confirmSelectionBtn.disabled = true;
                                 renderSelectableTicketsBtn.disabled = true;
@@ -490,33 +485,33 @@
                                 pickWinnerBtn.disabled = true;
                                 nameAssignmentSection.classList.add('hidden');
                             }
-                            resetBtn.textContent = 'Reiniciar'; // Reset button text for private view
-                            generateShareLinkBtn.disabled = false; // Enable share button in private view
+                            resetBtn.textContent = 'Reiniciar'; // Texto do botão de reiniciar para visualização privada
+                            generateShareLinkBtn.disabled = false; // Habilita o botão de partilha na visualização privada
                         }
 
                     } else {
                         console.log("Nenhum dado de rifa salvo encontrado para esta visualização.");
-                        // If no data, initialize UI as if it's the first time
+                        // Se não houver dados, inicializa a UI como se fosse a primeira vez
                         resetLocalStateAndUI();
                     }
                 }
             } catch (e) {
                 console.error("Erro ao carregar dados da rifa: ", e);
                 showMessage("Erro ao carregar dados. Por favor, tente novamente.", "error");
-                resetLocalStateAndUI(); // Reset UI in case of loading error
+                resetLocalStateAndUI(); // Reinicia a UI em caso de erro de carregamento
             } finally {
                 toggleLoading(false);
             }
         }
 
         /**
-         * Deletes all saved raffle data from Firestore.
-         * Only deletes private data. Public shares are not deleted by this.
+         * Exclui todos os dados da rifa salvos do Firestore.
+         * Apenas exclui dados privados. Partilhas públicas não são excluídas por isso.
          */
         async function deleteDataFromFirestore() {
             toggleLoading(true);
             try {
-                const docRef = getPrivateUserDocRef(); // Always delete private data
+                const docRef = getPrivateUserDocRef(); // Sempre exclui dados privados
                 if (docRef) {
                     await deleteDoc(docRef);
                     console.log("Dados da rifa excluídos do Firestore (privado).");
@@ -531,13 +526,13 @@
         }
 
         /**
-         * Renders the tickets that can be selected by the user.
-         * @param {number} maxNumber - The maximum number of tickets to display.
+         * Renderiza os bilhetes que podem ser selecionados pelo utilizador.
+         * @param {number} maxNumber - O número máximo de bilhetes a serem exibidos.
          */
         function renderSelectableTickets(maxNumber) {
-            selectableTicketsContainer.innerHTML = ''; // Clear the container
-            selectableTickets = []; // Clear the list of selectable tickets
-            selectedTicketsForRaffle = []; // Clear locally selected tickets
+            selectableTicketsContainer.innerHTML = ''; // Limpa o container
+            selectableTickets = []; // Limpa a lista de bilhetes selecionáveis
+            selectedTicketsForRaffle = []; // Limpa os bilhetes selecionados localmente
 
             if (maxNumber <= 0 || isNaN(maxNumber)) {
                 selectableTicketsContainer.innerHTML = '<p class="text-gray-500">Número inválido de bilhetes.</p>';
@@ -549,10 +544,10 @@
                 const ticketSpan = document.createElement('span');
                 ticketSpan.textContent = ticketNumber;
                 ticketSpan.classList.add('selectable-ticket', 'text-blue-800', 'bg-blue-100', 'text-xs', 'font-semibold', 'mr-2', 'mb-2', 'px-2.5', 'py-0.5', 'rounded-full');
-                ticketSpan.dataset.ticket = ticketNumber; // Store the ticket number in the dataset
+                ticketSpan.dataset.ticket = ticketNumber; // Armazena o número do bilhete no dataset
 
                 ticketSpan.addEventListener('click', () => {
-                    // Only allow selection if tickets have not been confirmed for the raffle yet
+                    // Apenas permite a seleção se os bilhetes ainda não foram confirmados para a rifa
                     if (confirmSelectionBtn.disabled) {
                         showMessage('Os bilhetes já foram confirmados. Reinicie para fazer novas seleções.', 'info');
                         return;
@@ -564,21 +559,21 @@
                     } else {
                         selectedTicketsForRaffle = selectedTicketsForRaffle.filter(t => t !== ticketNumber);
                     }
-                    // Sort to maintain visual consistency, but not strictly necessary for logic
+                    // Ordena para manter a consistência visual, mas não é estritamente necessário para a lógica
                     selectedTicketsForRaffle.sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
                 });
                 selectableTicketsContainer.appendChild(ticketSpan);
                 selectableTickets.push(ticketNumber);
             }
-            // Do not display message here, as this function can be called during initial loading.
-            // The message will be displayed by loadDataFromFirestore or by clicking the "Generate Options" button.
+            // Não exibe mensagem aqui, pois esta função pode ser chamada durante o carregamento inicial.
+            // A mensagem será exibida por loadDataFromFirestore ou pelo clique do botão "Gerar Opções".
         }
 
         /**
-         * Renders input fields to assign names to selected tickets.
+         * Renderiza os campos de entrada para atribuir nomes aos bilhetes selecionados.
          */
         function renderNameAssignmentInputs() {
-            nameAssignmentInputsContainer.innerHTML = ''; // Clear the container
+            nameAssignmentInputsContainer.innerHTML = ''; // Limpa o container
             if (generatedTickets.length === 0) {
                 nameAssignmentInputsContainer.innerHTML = '<p class="text-gray-500">Nenhum bilhete para atribuir nomes.</p>';
                 return;
@@ -597,8 +592,8 @@
                 input.type = 'text';
                 input.classList.add('shadow-sm', 'appearance-none', 'border', 'rounded-lg', 'flex-1', 'py-2', 'px-3', 'text-gray-700', 'leading-tight', 'focus:outline-none', 'focus:ring-2', 'focus:ring-blue-500', 'focus:border-transparent');
                 input.placeholder = 'Nome do comprador';
-                input.value = ticket.buyer || ''; // Pre-fill with existing name
-                input.dataset.ticketNumber = ticket.number; // Associate the input with the ticket number
+                input.value = ticket.buyer || ''; // Preenche com o nome existente
+                input.dataset.ticketNumber = ticket.number; // Associa o input ao número do bilhete
                 div.appendChild(input);
 
                 nameAssignmentInputsContainer.appendChild(div);
@@ -606,7 +601,7 @@
         }
 
         /**
-         * Saves the names entered in the input fields to the generatedTickets variable.
+         * Salva os nomes inseridos nos campos de entrada na variável generatedTickets.
          */
         async function saveNames() {
             const nameInputs = nameAssignmentInputsContainer.querySelectorAll('input[type="text"]');
@@ -618,24 +613,24 @@
                     generatedTickets[ticketIndex].buyer = buyerName;
                 }
             });
-            await saveDataToFirestore(); // Save updated names to Firestore
-            displayConfirmedTickets(generatedTickets); // Update ticket display
+            await saveDataToFirestore(); // Salva os nomes atualizados no Firestore
+            displayConfirmedTickets(generatedTickets); // Atualiza a exibição dos bilhetes
             showMessage('Nomes salvos com sucesso!', "success");
         }
 
         /**
-         * Saves the Pix key entered in the input field.
+         * Salva a chave Pix inserida no campo de entrada.
          */
         async function savePixKey() {
             pixKey = pixKeyInput.value.trim();
             displayPixKey.textContent = pixKey || 'Nenhuma chave Pix salva ainda.';
-            await saveDataToFirestore(); // Save updated Pix key to Firestore
+            await saveDataToFirestore(); // Salva a chave Pix atualizada no Firestore
             showMessage('Chave Pix salva com sucesso!', "success");
         }
 
         /**
-         * Displays the confirmed raffle tickets in the UI, including the buyer's name.
-         * @param {Array<Object>} tickets - The array of ticket objects to display.
+         * Exibe os bilhetes que foram confirmados para a rifa na interface, incluindo o nome do comprador.
+         * @param {Array<Object>} tickets - O array de objetos de bilhetes a serem exibidos.
          */
         function displayConfirmedTickets(tickets) {
             if (tickets.length === 0) {
@@ -650,8 +645,8 @@
         }
 
         /**
-         * Selects a random winner from the generated (confirmed) tickets.
-         * @returns {Object | null} - The winning ticket object ({ number, buyer }) or null if no tickets.
+         * Seleciona um vencedor aleatoriamente entre os bilhetes gerados (confirmados).
+         * @returns {Object | null} - O objeto do bilhete vencedor ({ number, buyer }) ou null se não houver bilhetes.
          */
         function pickWinner() {
             if (generatedTickets.length === 0) {
@@ -663,8 +658,8 @@
         }
 
         /**
-         * Clears the local application state and UI, without interacting with Firestore.
-         * Used for initialization or after a loading error.
+         * Limpa o estado local da aplicação e a interface, sem interagir com o Firestore.
+         * Usado para inicialização ou após um erro de carregamento.
          */
         function resetLocalStateAndUI() {
             selectableTickets = [];
@@ -672,7 +667,7 @@
             generatedTickets = [];
             currentWinner = null;
             pixKey = '';
-            maxTicketNumberSaved = 50; // Reset max ticket number to default
+            maxTicketNumberSaved = 50; // Reinicia o número máximo de bilhetes para o padrão
             isViewingShared = false;
             currentShareId = null;
 
@@ -687,7 +682,7 @@
             pixKeyInput.value = '';
             displayPixKey.textContent = 'Nenhuma chave Pix salva ainda.';
 
-            // Re-enable all inputs and buttons for private view
+            // Reabilita todos os inputs e botões para a visualização privada
             maxTicketNumberInput.disabled = false;
             renderSelectableTicketsBtn.disabled = false;
             confirmSelectionBtn.disabled = false;
@@ -695,38 +690,38 @@
             saveNamesBtn.disabled = false;
             pixKeyInput.disabled = false;
             savePixKeyBtn.disabled = false;
-            generateShareLinkBtn.disabled = false; // Enable share button
-            shareLinkDisplaySection.classList.add('hidden'); // Hide share link display
-            shareLinkDisplay.value = ''; // Clear share link input
+            generateShareLinkBtn.disabled = false; // Habilita o botão de partilha
+            shareLinkDisplaySection.classList.add('hidden'); // Esconde a exibição do link de partilha
+            shareLinkDisplay.value = ''; // Limpa o input do link de partilha
 
-            resetBtn.textContent = 'Reiniciar'; // Reset button text for private view
+            resetBtn.textContent = 'Reiniciar'; // Reinicia o texto do botão para visualização privada
 
             const selectableTicketElements = selectableTicketsContainer.querySelectorAll('.selectable-ticket');
             selectableTicketElements.forEach(ticketEl => {
                 ticketEl.classList.remove('selected');
                 ticketEl.style.pointerEvents = 'auto';
             });
-            nameAssignmentInputsContainer.querySelectorAll('input').forEach(input => input.disabled = false); // Re-enable name inputs
+            nameAssignmentInputsContainer.querySelectorAll('input').forEach(input => input.disabled = false); // Reabilita os inputs de nome
 
             messageBox.classList.add('hidden');
             showMessage('Aplicação reiniciada. Gere as opções de bilhetes para começar.', "info");
         }
 
         /**
-         * Resets the application. If viewing a shared link, it navigates back to the private view.
-         * Otherwise, it deletes private data and resets locally.
+         * Reinicia a aplicação. Se estiver a visualizar um link partilhado, navega de volta para a visualização privada.
+         * Caso contrário, exclui os dados privados e reinicia localmente.
          */
         async function resetApp() {
             if (isViewingShared) {
-                window.location.href = window.location.origin + window.location.pathname; // Navigate back to private view
+                window.location.href = window.location.origin + window.location.pathname; // Navega de volta para a visualização privada
             } else {
-                await deleteDataFromFirestore(); // Only delete private data
+                await deleteDataFromFirestore(); // Apenas exclui dados privados
                 resetLocalStateAndUI();
             }
         }
 
         /**
-         * Generates a shareable link for the current raffle data.
+         * Gera um link partilhável para os dados atuais da rifa.
          */
         async function generateShareLink() {
             if (generatedTickets.length === 0) {
@@ -736,8 +731,8 @@
 
             toggleLoading(true);
             try {
-                const shareId = crypto.randomUUID(); // Generate a unique ID for the share
-                await saveDataToFirestore(true, shareId); // Save current data to a public share document
+                const shareId = crypto.randomUUID(); // Gera um ID único para a partilha
+                await saveDataToFirestore(true, shareId); // Salva os dados atuais num documento de partilha pública
 
                 const shareUrl = `${window.location.origin}${window.location.pathname}?shareId=${shareId}`;
                 shareLinkDisplay.value = shareUrl;
@@ -753,12 +748,12 @@
         }
 
         /**
-         * Copies the share link to the clipboard.
+         * Copia o link de partilha para a área de transferência.
          */
         function copyShareLink() {
             const shareLinkInput = document.getElementById('shareLinkDisplay');
-            shareLinkInput.select(); // Select the text in the input field
-            shareLinkInput.setSelectionRange(0, 99999); // For mobile devices
+            shareLinkInput.select(); // Seleciona o texto no campo de input
+            shareLinkInput.setSelectionRange(0, 99999); // Para dispositivos móveis
 
             let copiedSuccessfully = false;
             try {
@@ -770,15 +765,15 @@
 
             if (copiedSuccessfully) {
                 showMessage("Link copiado para a área de transferência!", "success");
-                // Optional: Add a temporary visual feedback to the input field
+                // Opcional: Adiciona um feedback visual temporário ao campo de input
                 shareLinkInput.classList.add('border-green-500', 'ring-2', 'ring-green-500');
                 setTimeout(() => {
                     shareLinkInput.classList.remove('border-green-500', 'ring-2', 'ring-green-500');
                 }, 1500);
             } else {
-                // Fallback for cases where direct copy fails
+                // Fallback para casos em que a cópia direta falha
                 showMessage("Não foi possível copiar automaticamente. Por favor, selecione o texto no campo acima e copie manualmente (Ctrl+C ou Cmd+C).", "warning");
-                // Highlight the input field more prominently for manual copy
+                // Destaca o campo de input de forma mais proeminente para cópia manual
                 shareLinkInput.focus();
                 shareLinkInput.classList.add('border-red-500', 'ring-2', 'ring-red-500');
                 setTimeout(() => {
@@ -789,91 +784,99 @@
 
         // Event Listeners
 
-        // Button to generate clickable ticket options
+        // Botão para gerar opções de bilhetes clicáveis
         renderSelectableTicketsBtn.addEventListener('click', async () => {
             const maxNum = parseInt(maxTicketNumberInput.value, 10);
             if (isNaN(maxNum) || maxNum <= 0) {
                 showMessage('Por favor, insira um número válido de bilhetes disponíveis (maior que zero).', "error");
                 return;
             }
-            maxTicketNumberSaved = maxNum; // Update the saved max ticket number
+            maxTicketNumberSaved = maxNum; // Atualiza o número máximo de bilhetes guardado
             renderSelectableTickets(maxNum);
-            confirmSelectionBtn.disabled = false; // Enable confirm selection button
-            pickWinnerBtn.disabled = true; // Disable draw while no tickets are confirmed
-            winnerDisplay.innerHTML = '<span class="text-gray-400 text-lg">Ainda não sorteado</span>'; // Clear winner
-            nameAssignmentSection.classList.add('hidden'); // Hide name section
-            shareLinkDisplaySection.classList.add('hidden'); // Hide share link display
-            shareLinkDisplay.value = ''; // Clear share link input
+            confirmSelectionBtn.disabled = false; // Habilita o botão de confirmar seleção
+            pickWinnerBtn.disabled = true; // Desabilita o sorteio enquanto não há bilhetes confirmados
+            winnerDisplay.innerHTML = '<span class="text-gray-400 text-lg">Ainda não sorteado</span>'; // Limpa o vencedor
+            nameAssignmentSection.classList.add('hidden'); // Esconde a secção de nomes
+            shareLinkDisplaySection.classList.add('hidden'); // Esconde a exibição do link de partilha
+            shareLinkDisplay.value = ''; // Limpa o input do link de partilha
             showMessage(`Foram geradas ${maxNum} opções de bilhetes. Agora, selecione os que deseja incluir na rifa.`, "info");
-            await saveDataToFirestore(); // Save the updated max ticket number
+            await saveDataToFirestore(); // Salva o número máximo de bilhetes atualizado
         });
 
-        // Button to confirm ticket selection for the raffle
+        // Botão para confirmar a seleção de bilhetes para a rifa
         confirmSelectionBtn.addEventListener('click', async () => {
             if (selectedTicketsForRaffle.length === 0) {
                 showMessage('Por favor, selecione pelo menos um bilhete para a rifa.', "warning");
                 return;
             }
-            // Convert selected numbers into ticket objects with empty names
+            // Converte os números selecionados em objetos de bilhete com nomes vazios
             generatedTickets = selectedTicketsForRaffle.map(number => ({ number: number, buyer: '' }));
-            currentWinner = null; // Clear previous winner
-            displayConfirmedTickets(generatedTickets); // Display confirmed tickets
-            pickWinnerBtn.disabled = false; // Enable draw button
-            confirmSelectionBtn.disabled = true; // Disable after confirming
-            renderSelectableTicketsBtn.disabled = true; // Disable generating new options
+            currentWinner = null; // Limpa o vencedor anterior
+            displayConfirmedTickets(generatedTickets); // Exibe os bilhetes confirmados
+            pickWinnerBtn.disabled = false; // Habilita o botão de sortear
+            confirmSelectionBtn.disabled = true; // Desabilita após confirmar
+            renderSelectableTicketsBtn.disabled = true; // Desabilita a geração de novas opções
 
-            // Disable clicks on selectable tickets after confirmation
+            // Desabilita os cliques nos bilhetes selecionáveis após a confirmação
             const selectableTicketElements = selectableTicketsContainer.querySelectorAll('.selectable-ticket');
             selectableTicketElements.forEach(ticketEl => {
-                ticketEl.style.pointerEvents = 'none'; // Disable click for all selectable tickets
+                ticketEl.style.pointerEvents = 'none'; // Desabilita o clique para todos os bilhetes selecionáveis
             });
 
-            nameAssignmentSection.classList.remove('hidden'); // Show name section
-            renderNameAssignmentInputs(); // Render name inputs
-            shareLinkDisplaySection.classList.add('hidden'); // Hide share link display
-            shareLinkDisplay.value = ''; // Clear share link input
+            nameAssignmentSection.classList.remove('hidden'); // Mostra a secção de nomes
+            renderNameAssignmentInputs(); // Renderiza os inputs de nome
+            shareLinkDisplaySection.classList.add('hidden'); // Esconde a exibição do link de partilha
+            shareLinkDisplay.value = ''; // Limpa o input do link de partilha
 
-            await saveDataToFirestore(); // Save tickets to Firestore
+            await saveDataToFirestore(); // Salva os bilhetes no Firestore
             showMessage(`${generatedTickets.length} bilhetes foram confirmados para a rifa! Agora, atribua os nomes.`, "success");
         });
 
-        // Button to save names
+        // Botão para salvar nomes
         saveNamesBtn.addEventListener('click', saveNames);
 
-        // Button to save Pix key
+        // Botão para salvar a chave Pix
         savePixKeyBtn.addEventListener('click', savePixKey);
 
-        // Button to generate share link
+        // Botão para gerar link de partilha
         generateShareLinkBtn.addEventListener('click', generateShareLink);
 
-        // Button to copy share link
+        // Botão para copiar link de partilha
         copyShareLinkBtn.addEventListener('click', copyShareLink);
 
         pickWinnerBtn.addEventListener('click', async () => {
             const winner = pickWinner();
             if (winner) {
-                currentWinner = winner; // Store the winner
+                currentWinner = winner; // Armazena o vencedor
                 winnerDisplay.textContent = `${currentWinner.number} (${currentWinner.buyer || 'Sem nome'})`;
-                displayConfirmedTickets(generatedTickets); // Update display to highlight winner
-                pickWinnerBtn.disabled = true; // Disable after drawing
-                await saveDataToFirestore(); // Save winner to Firestore
+                displayConfirmedTickets(generatedTickets); // Atualiza a exibição para destacar o vencedor
+                pickWinnerBtn.disabled = true; // Desabilita após sortear
+                await saveDataToFirestore(); // Salva o vencedor no Firestore
                 showMessage(`O bilhete vencedor é: ${winner.number} (${winner.buyer || 'Sem nome'})!`, "success");
             }
         });
 
         resetBtn.addEventListener('click', resetApp);
 
-        // Initialize the application when the page loads
+        // Inicializa a aplicação quando a página carrega
         document.addEventListener('firebaseAuthReady', () => {
-            displayUserId.textContent = window.userId; // Display user ID
-            loadDataFromFirestore(); // Load all saved data
+            console.log("Evento firebaseAuthReady recebido.");
+            if (window.userId) {
+                displayUserId.textContent = window.userId; // Exibe o ID do utilizador
+                loadDataFromFirestore(); // Carrega todos os dados guardados
+            } else {
+                displayUserId.textContent = "Falha na Autenticação";
+                showMessage("Não foi possível autenticar o usuário. A persistência de dados pode não funcionar.", "error");
+                // Procede com um estado de UI limpo se a autenticação falhar
+                resetLocalStateAndUI();
+            }
         });
 
-        // Ensure the UI is initialized with a default state while waiting for authentication and loading
+        // Garante que a UI é inicializada com um estado padrão enquanto aguarda a autenticação e o carregamento
         window.onload = () => {
-            // Render selectable ticket options initially with the default value
+            // Renderiza as opções de bilhetes selecionáveis inicialmente com o valor padrão
             renderSelectableTickets(parseInt(maxTicketNumberInput.value, 10));
-            // The loading and UI update logic will be handled by 'firebaseAuthReady'
+            // A lógica de carregamento e atualização da UI será tratada pelo 'firebaseAuthReady'
         };
     </script>
 </body>
